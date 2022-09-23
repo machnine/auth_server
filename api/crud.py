@@ -2,8 +2,8 @@ from typing import List
 
 from sqlmodel import Session, select
 
-from api.model import User, UserCreate, UserShow
 from api.config import settings
+from api.model import User, UserCreate, UserShow
 
 
 # Create

@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, status
 from fastapi.exceptions import HTTPException
 from pydantic import EmailStr
 
+from api.auth import oath_scheme
 from api.crud import create_user, delete_user, get_all_users, get_user, update_user
 from api.db import Session, get_session
 from api.model import UserCreate, UserShow
@@ -14,14 +15,17 @@ router = APIRouter(tags=["User"])
 # User CRUD enpoints
 # Create
 @router.post("/user/", response_model=UserShow, status_code=status.HTTP_201_CREATED)
-async def user_create(user: UserCreate, session: Session = Depends(get_session)):
-    if new_user := get_user(email=user.email, session=session):
+async def user_create(
+    user: UserCreate, session: Session = Depends(get_session), _=Depends(oath_scheme)
+):
+    if the_user := get_user(email=user.email, session=session):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"User <{new_user.email}> already exists!",
+            detail=f"User <{the_user.email}> already exists!",
         )
 
-    return create_user(user=user, session=session)
+    new_user = create_user(user=user, session=session)
+    return new_user
 
 
 # Retrieve
@@ -47,6 +51,7 @@ async def user_update(
     password: str | None = None,
     new_email: EmailStr | None = None,
     session: Session = Depends(get_session),
+    _=Depends(oath_scheme),
 ):
     if get_user(email=email, session=session):
         return update_user(
@@ -58,7 +63,9 @@ async def user_update(
 
 # Delete
 @router.delete("/user/", status_code=status.HTTP_204_NO_CONTENT)
-async def user_delete(email: EmailStr, session: Session = Depends(get_session)):
+async def user_delete(
+    email: EmailStr, session: Session = Depends(get_session), _=Depends(oath_scheme)
+):
     if get_user(email=email, session=session):
         delete_user(email=email, session=session)
     else:

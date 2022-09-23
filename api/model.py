@@ -1,6 +1,7 @@
 from typing import Optional
-from sqlmodel import SQLModel, Field, Column, String
-from pydantic import EmailStr, BaseModel
+
+from pydantic import BaseModel, EmailStr
+from sqlmodel import Column, Field, SQLModel, String
 
 
 class User(SQLModel, table=True):
@@ -8,6 +9,7 @@ class User(SQLModel, table=True):
     email: EmailStr = Field(sa_column=Column("email", String, unique=True))
     hashed_password: str
     refresh_token: str | None = Field(default=None)
+    is_admin: bool = False
 
 
 class UserCreate(SQLModel):
@@ -32,7 +34,3 @@ class Token(BaseModel):
 
 class TokenRefresh(BaseModel):
     refresh_token: str
-
-
-class TokenData(BaseModel):
-    email: EmailStr | None = None

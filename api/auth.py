@@ -2,12 +2,15 @@ from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, status
 from fastapi.exceptions import HTTPException
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 
 from api.config import settings
 from api.crud import get_user, update_user
 from api.db import Session, get_session
 from api.model import Token, TokenRefresh, User, UserIn, UserShow
+
+oath_scheme = OAuth2PasswordBearer(tokenUrl="admin_token")
 
 router = APIRouter(tags=["Token"])
 
@@ -80,6 +83,24 @@ def get_user_from_refresh_token(token: str, session: Session) -> UserShow:
     return email
 
 
+@router.post("/admin_token/", response_model=Token)
+async def admin_token(
+    form: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(get_session)
+):
+    user_in = UserIn(email=form.username, password=form.password)
+    user = authenticate_user(user_in, session=session)
+    if not user:
+        raise credential_exception
+
+    if not user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not an admin user"
+        )
+
+    access_token = create_access_token(user.email)
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
 @router.post("/token/", response_model=Token)
 async def access_token(user: UserIn, session: Session = Depends(get_session)):
     """
@@ -89,8 +110,10 @@ async def access_token(user: UserIn, session: Session = Depends(get_session)):
     if not the_user:
         raise credential_exception
 
-    access_token = create_access_token(the_user.email)      # access token expires in 15mins
-    refresh_token = create_refresh_token(the_user.email)    # refresh token expires in 24hrs
+    access_token = create_access_token(the_user.email)  # access token expires in 15mins
+    refresh_token = create_refresh_token(
+        the_user.email
+    )  # refresh token expires in 24hrs
 
     # save refresh token to db
     update_user(email=the_user.email, session=session, refresh_token=refresh_token)
@@ -99,7 +122,9 @@ async def access_token(user: UserIn, session: Session = Depends(get_session)):
 
 
 @router.post("/refresh/", response_model=Token)
-async def renew_access_token(token: TokenRefresh, session: Session = Depends(get_session)):
+async def renew_access_token(
+    token: TokenRefresh, session: Session = Depends(get_session)
+):
     """
     Accept a refresh token and generate an access token
     """

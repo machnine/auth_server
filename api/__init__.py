@@ -1,9 +1,11 @@
+import logging
+
 from fastapi import FastAPI
 
 from api.auth import router as auth_router
+from api.route import router as route_router
 from api.config import settings
 from api.db import create_db
-from api.route import router as route_router
 
 
 def create_app():
@@ -18,3 +20,12 @@ def create_app():
 
 
 app = create_app()
+
+
+# start the logging (ref: https://github.com/tiangolo/fastapi/issues/1508)
+@app.on_event("startup")
+async def startup_event():
+    logger = logging.getLogger("uvicorn.access")
+    handler = logging.FileHandler("logfile.log")
+    handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+    logger.addHandler(handler)
