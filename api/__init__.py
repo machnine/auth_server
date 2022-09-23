@@ -7,12 +7,20 @@ from api.route import router as route_router
 from api.config import settings
 from api.db import create_db
 
+tags_metadata = [
+    {
+        "name": "User",
+        "description": "Operations with users. Non-GET operations require authentication as Admin.",
+    },
+    {"name": "Token", "description": "OAuth token handling."},
+]
+
 
 def create_app():
     """
     API app loader
     """
-    app = FastAPI(title=settings.app_name)
+    app = FastAPI(title=settings.app_name, openapi_tags=tags_metadata)
     app.include_router(route_router)
     app.include_router(auth_router)
     create_db()
