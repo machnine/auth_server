@@ -1,11 +1,12 @@
+from typing import List
+
 from fastapi import APIRouter, Depends, status
 from fastapi.exceptions import HTTPException
-
 from pydantic import EmailStr
 
+from api.crud import create_user, delete_user, get_all_users, get_user, update_user
 from api.db import Session, get_session
 from api.model import UserCreate, UserShow
-from api.crud import create_user, get_user, update_user, delete_user
 
 router = APIRouter(tags=["User"])
 
@@ -24,6 +25,13 @@ async def user_create(user: UserCreate, session: Session = Depends(get_session))
 
 
 # Retrieve
+@router.get("/users/", response_model=List[UserShow])
+async def user_get_all(session: Session = Depends(get_session)):
+    users = get_all_users(session=session)
+    show_users = [UserShow.from_orm(user) for user in users]
+    return show_users
+
+
 @router.get("/user/", response_model=UserShow)
 async def user_get(email: EmailStr, session: Session = Depends(get_session)):
     if user := get_user(email=email, session=session):

@@ -1,23 +1,14 @@
+from typing import List
+
 from sqlmodel import Session, select
+
 from api.model import User, UserCreate, UserShow
-from passlib.context import CryptContext
-
-
-# Password context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
-def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+from api.config import settings
 
 
 # Create
 def create_user(user: UserCreate, session: Session) -> UserShow:
-    hashed_password = hash_password(user.password)
+    hashed_password = settings.pwd_context.hash(user.password)
     new_user = User(email=user.email, hashed_password=hashed_password)
     with session:
         session.add(new_user)
@@ -34,6 +25,13 @@ def get_user(email: str, session: Session) -> User:
     return this_user
 
 
+def get_all_users(session: Session) -> List[User]:
+    statement = select(User)
+    with session:
+        users = session.exec(statement).all()
+    return users
+
+
 # Update
 def update_user(email: str, session: Session, **kwargs) -> User:
     this_user = get_user(email=email, session=session)
@@ -41,7 +39,7 @@ def update_user(email: str, session: Session, **kwargs) -> User:
         with session:
             # update password
             if password := kwargs.get("password"):
-                this_user.hashed_password = hash_password(password)
+                this_user.hashed_password = settings.pwd_context.hash(password)
             # update email
             if new_email := kwargs.get("new_email"):
                 this_user.email = new_email
