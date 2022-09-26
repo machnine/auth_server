@@ -3,6 +3,5 @@ __pycache__/
 .env/
 .vscode/
 .coverage
-deactivate.bat
+*.bat
 *.log
-setenv.bat

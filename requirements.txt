@@ -6,7 +6,7 @@ python-multipart
 sqlmodel
 uvicorn
 
-#for testing
+# for testing
 pytest
 pytest-cov
 requests
