@@ -12,7 +12,7 @@ tags_metadata = [
         "name": "User",
         "description": "Operations with users. Modifying operations require authentication as an admin user",
     },
-    {"name": "Token", "description": "OAuth token handling."},
+    {"name": "Token", "description": "OAuth token handling"},
 ]
 
 
