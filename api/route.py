@@ -3,8 +3,9 @@ from typing import List
 from fastapi import APIRouter, Depends, status
 from fastapi.exceptions import HTTPException
 from pydantic import EmailStr
+from sqlalchemy.exc import IntegrityError
 
-from api.auth import oath_scheme
+from api.auth import oauth_scheme
 from api.crud import create_user, delete_user, get_all_users, get_user, update_user
 from api.db import Session, get_session
 from api.model import UserCreate, UserShow
@@ -14,9 +15,14 @@ router = APIRouter(tags=["User"])
 
 # User CRUD enpoints
 # Create
-@router.post("/user/", response_model=UserShow, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/user/",
+    response_model=UserShow,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a new user",
+)
 async def user_create(
-    user: UserCreate, session: Session = Depends(get_session), _=Depends(oath_scheme)
+    user: UserCreate, session: Session = Depends(get_session), _=Depends(oauth_scheme)
 ):
     if the_user := get_user(email=user.email, session=session):
         raise HTTPException(
@@ -29,14 +35,14 @@ async def user_create(
 
 
 # Retrieve
-@router.get("/users/", response_model=List[UserShow])
+@router.get("/users/", response_model=List[UserShow], summary="Retrieve all users")
 async def user_get_all(session: Session = Depends(get_session)):
     users = get_all_users(session=session)
     show_users = [UserShow.from_orm(user) for user in users]
     return show_users
 
 
-@router.get("/user/", response_model=UserShow)
+@router.get("/user/", response_model=UserShow, summary="Retrieve a user using email")
 async def user_get(email: EmailStr, session: Session = Depends(get_session)):
     if user := get_user(email=email, session=session):
         return UserShow.from_orm(user)
@@ -45,26 +51,34 @@ async def user_get(email: EmailStr, session: Session = Depends(get_session)):
 
 
 # Update
-@router.put("/user/", response_model=UserShow)
+@router.put("/user/", response_model=UserShow, summary="Update user attributes")
 async def user_update(
     email: EmailStr,
     password: str | None = None,
     new_email: EmailStr | None = None,
     session: Session = Depends(get_session),
-    _=Depends(oath_scheme),
+    _=Depends(oauth_scheme),
 ):
     if get_user(email=email, session=session):
-        return update_user(
-            email=email, password=password, new_email=new_email, session=session
-        )
+        try:
+            return update_user(
+                email=email, password=password, new_email=new_email, session=session
+            )
+        except IntegrityError:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"<{new_email}> already exists",
+            )
     else:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
 
 # Delete
-@router.delete("/user/", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/user/", status_code=status.HTTP_204_NO_CONTENT, summary="Delete a user"
+)
 async def user_delete(
-    email: EmailStr, session: Session = Depends(get_session), _=Depends(oath_scheme)
+    email: EmailStr, session: Session = Depends(get_session), _=Depends(oauth_scheme)
 ):
     if get_user(email=email, session=session):
         delete_user(email=email, session=session)

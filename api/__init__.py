@@ -10,7 +10,7 @@ from api.db import create_db
 tags_metadata = [
     {
         "name": "User",
-        "description": "Operations with users. Non-GET operations require authentication as Admin.",
+        "description": "Operations with users. Modifying operations require authentication as an admin user",
     },
     {"name": "Token", "description": "OAuth token handling."},
 ]

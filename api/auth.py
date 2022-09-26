@@ -10,7 +10,7 @@ from api.crud import get_user, update_user
 from api.db import Session, get_session
 from api.model import Token, TokenRefresh, User, UserIn, UserShow
 
-oath_scheme = OAuth2PasswordBearer(tokenUrl="admin_token")
+oauth_scheme = OAuth2PasswordBearer(tokenUrl="admin_token")
 
 router = APIRouter(tags=["Token"])
 
@@ -83,7 +83,11 @@ def get_user_from_refresh_token(token: str, session: Session) -> UserShow:
     return email
 
 
-@router.post("/admin_token/", response_model=Token)
+@router.post(
+    "/admin_token/",
+    response_model=Token,
+    summary="Allow admin to login via webform and obtain an access token for this server",
+)
 async def admin_token(
     form: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(get_session)
 ):
@@ -101,7 +105,11 @@ async def admin_token(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.post("/token/", response_model=Token)
+@router.post(
+    "/token/",
+    response_model=Token,
+    summary="Generate access_token and refresh_token for user",
+)
 async def access_token(user: UserIn, session: Session = Depends(get_session)):
     """
     Accept user email and password (UserIn) and generate an access token
@@ -109,7 +117,6 @@ async def access_token(user: UserIn, session: Session = Depends(get_session)):
     the_user = authenticate_user(user=user, session=session)
     if not the_user:
         raise credential_exception
-
     access_token = create_access_token(the_user.email)  # access token expires in 15mins
     refresh_token = create_refresh_token(
         the_user.email
@@ -121,7 +128,11 @@ async def access_token(user: UserIn, session: Session = Depends(get_session)):
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.post("/refresh/", response_model=Token)
+@router.post(
+    "/refresh/",
+    response_model=Token,
+    summary="Renew access_token using a valid refresh_token",
+)
 async def renew_access_token(
     token: TokenRefresh, session: Session = Depends(get_session)
 ):
