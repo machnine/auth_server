@@ -171,6 +171,7 @@ def test_post_token(session: Session):
             new_token = Token(**response.json())
             assert new_token.token_type == "bearer"
             assert new_token.access_token is not None
+            assert new_token.refresh_token is not None
 
             # attempt to generate token for non-existing user
             response = test_client.post(

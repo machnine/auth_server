@@ -125,7 +125,11 @@ async def access_token(user: UserIn, session: Session = Depends(get_session)):
     # save refresh token to db
     update_user(email=the_user.email, session=session, refresh_token=refresh_token)
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "refresh_token": refresh_token,
+    }
 
 
 @router.post(
