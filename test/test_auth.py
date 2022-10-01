@@ -1,7 +1,6 @@
 from test import test_client
 from unittest import mock
 
-import pytest
 from api import app
 from api.auth import (
     authenticate_user,
@@ -17,15 +16,9 @@ from jose import jwt
 from jose.exceptions import ExpiredSignatureError, JWTError
 from sqlmodel import Session
 
-from .conftest import engine, fake_admin, fake_user
+from .conftest import fake_admin, fake_user
 
 new_email = "newnew@email.com"
-
-
-@pytest.fixture(name="session", scope="session")
-def session_fixture():
-    with Session(engine) as session:
-        yield session
 
 
 # mock jwt secret
@@ -36,25 +29,23 @@ def jwt_decoder(jwt_token: str, secret: str = MOCK_JWT_SECRET):
     return jwt.decode(jwt_token, secret, algorithms=["HS256"])
 
 
-def test_authenticate_user(session: Session):
-    app.dependency_overrides[get_session] = lambda: session
+def test_authenticate_user(db_session: Session):
     # failed non-existing
     failed_user = authenticate_user(
-        UserIn(email="any@email.com", password="anypass"), session
+        UserIn(email="any@email.com", password="anypass"), db_session
     )
     assert not failed_user
 
     # failed wrong password
     failed_user = authenticate_user(
-        UserIn(email=fake_user.email, password="anypass"), session
+        UserIn(email=fake_user.email, password="anypass"), db_session
     )
     assert not failed_user
 
     # successful
-    success_user = authenticate_user(fake_user, session)
+    success_user = authenticate_user(fake_user, db_session)
     assert success_user is not None
     assert success_user.email == fake_user.email
-    app.dependency_overrides.clear()
 
 
 def test_create_jwt_token():
@@ -109,13 +100,12 @@ def test_create_refresh_token():
     assert decoded_token["sub"] == new_email
 
 
-def test_get_user_from_refresh_token(session: Session):
-    app.dependency_overrides[get_session] = lambda: session
+def test_get_user_from_refresh_token(db_session: Session):
     with mock.patch("api.config.settings.refresh_token_secret", MOCK_JWT_SECRET):
         # refresh token without email encoded
         token_noemail = create_refresh_token(email=None)
         try:
-            user_noemail = get_user_from_refresh_token(token_noemail, session)
+            user_noemail = get_user_from_refresh_token(token_noemail, db_session)
         except Exception:
             user_noemail = None
         assert user_noemail is None
@@ -123,16 +113,14 @@ def test_get_user_from_refresh_token(session: Session):
         # refresh token with non-existing user
         token_nonuser = create_refresh_token(email="random@email.com")
         try:
-            non_user = get_user_from_refresh_token(token_nonuser, session)
+            non_user = get_user_from_refresh_token(token_nonuser, db_session)
         except Exception:
             non_user = None
         assert non_user is None
 
-    app.dependency_overrides.clear()
 
-
-def test_post_admin_token(session: Session):
-    app.dependency_overrides[get_session] = lambda: session
+def test_post_admin_token(db_session: Session):
+    app.dependency_overrides[get_session] = lambda: db_session
     with mock.patch("api.config.settings.refresh_token_secret", MOCK_JWT_SECRET):
         with mock.patch("api.config.settings.access_token_secret", MOCK_JWT_SECRET):
             # login as an admin user
@@ -161,8 +149,8 @@ def test_post_admin_token(session: Session):
     app.dependency_overrides.clear()
 
 
-def test_post_token(session: Session):
-    app.dependency_overrides[get_session] = lambda: session
+def test_post_token(db_session: Session):
+    app.dependency_overrides[get_session] = lambda: db_session
     with mock.patch("api.config.settings.refresh_token_secret", MOCK_JWT_SECRET):
         with mock.patch("api.config.settings.access_token_secret", MOCK_JWT_SECRET):
             # generate token for existing user
@@ -182,15 +170,15 @@ def test_post_token(session: Session):
     app.dependency_overrides.clear()
 
 
-def test_post_refresh(session: Session):
-    app.dependency_overrides[get_session] = lambda: session
+def test_post_refresh(db_session: Session):
+    app.dependency_overrides[get_session] = lambda: db_session
     with mock.patch("api.config.settings.refresh_token_secret", MOCK_JWT_SECRET):
         with mock.patch("api.config.settings.access_token_secret", MOCK_JWT_SECRET):
             # generate a refresh token and stored in mock db
             test_client.post("/token/", json=fake_user.dict())
 
             # read the refresh token
-            user = get_user(fake_user.email, session)
+            user = get_user(fake_user.email, db_session)
             # test the following endpoint wiht user.refresh_token
             response = test_client.post(
                 "/refresh/", json={"refresh_token": user.refresh_token}

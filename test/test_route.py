@@ -1,24 +1,17 @@
-import pytest
+from test import test_client
+
 from api import app
 from api.auth import oauth_scheme
 from api.db import get_session
-from test import test_client
 from sqlmodel import Session
 
-from .conftest import engine, fake_admin, fake_new_user, fake_user
-
+from .conftest import fake_admin, fake_new_user, fake_user
 
 new_email = "newnew@email.com"
 
 
-@pytest.fixture(name="session", scope="session")
-def session_fixture():
-    with Session(engine) as session:
-        yield session
-
-
-def test_get_user(session: Session):
-    app.dependency_overrides[get_session] = lambda: session
+def test_get_user(db_session: Session):
+    app.dependency_overrides[get_session] = lambda: db_session
     # existing user
     response = test_client.get(url=f"/user/?email={fake_user.email}")
     data = response.json()
@@ -31,8 +24,8 @@ def test_get_user(session: Session):
     app.dependency_overrides.clear()
 
 
-def test_get_all_user(session: Session):
-    app.dependency_overrides[get_session] = lambda: session
+def test_get_all_user(db_session: Session):
+    app.dependency_overrides[get_session] = lambda: db_session
     response = test_client.get(url="/users/")
     app.dependency_overrides.clear()
     data = response.json()
@@ -41,8 +34,8 @@ def test_get_all_user(session: Session):
     assert data[1] == {"email": fake_admin.email, "id": 2}
 
 
-def test_create_user(session: Session):
-    app.dependency_overrides[get_session] = lambda: session
+def test_create_user(db_session: Session):
+    app.dependency_overrides[get_session] = lambda: db_session
 
     # create new user requires authentication
     response = test_client.post("/user/", json=fake_new_user.dict())
@@ -68,8 +61,8 @@ def test_create_user(session: Session):
     app.dependency_overrides.clear()
 
 
-def test_update_user(session: Session):
-    app.dependency_overrides[get_session] = lambda: session
+def test_update_user(db_session: Session):
+    app.dependency_overrides[get_session] = lambda: db_session
     #  requires authentication
     response = test_client.put("/user/", json={"email": fake_user.email})
     data = response.json()
@@ -98,8 +91,8 @@ def test_update_user(session: Session):
     app.dependency_overrides.clear()
 
 
-def test_delete_user(session: Session):
-    app.dependency_overrides[get_session] = lambda: session
+def test_delete_user(db_session: Session):
+    app.dependency_overrides[get_session] = lambda: db_session
     #  requires authentication
     response = test_client.delete("/user/", json={"email": new_email})
     data = response.json()

@@ -1,7 +1,8 @@
-from api.model import UserCreate
-from sqlmodel.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine
+import pytest
 from api.crud import create_user, update_user
+from api.model import UserCreate
+from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel.pool import StaticPool
 
 # mock data
 fake_user = UserCreate(email="fake_user@email.com", password="fakepassword")
@@ -13,6 +14,13 @@ engine = create_engine(
     url="sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
 )
 
+# database session fixture
+# named as db_session to distinguish from test session
+@pytest.fixture(name="db_session", scope="session")
+def session_fixture():
+    with Session(engine) as session:
+        yield session
+
 
 def pytest_sessionstart(session):
     """
@@ -20,11 +28,11 @@ def pytest_sessionstart(session):
     before performing collection and entering the run test loop.
     """
     SQLModel.metadata.create_all(engine)
-    with Session(engine) as session:
-        create_user(fake_user, session)
-        create_user(fake_admin, session)
-        update_user(fake_admin.email, session, is_admin=1)
-        session.commit()
+    with Session(engine) as db:
+        create_user(fake_user, db)
+        create_user(fake_admin, db)
+        update_user(fake_admin.email, db, is_admin=1)
+        db.commit()
 
 
 def pytest_sessionfinish(session, exitstatus):
