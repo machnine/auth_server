@@ -21,7 +21,7 @@ COPY requirements.txt requirements.txt
 RUN .env/bin/pip install -r requirements.txt
 
 # run the testing
-RUN .env/bin/pytest --cov=api/ --cov-report=term-missing test/
+RUN .env/bin/pytest -v --cov=api/ --cov-report=term-missing test/
 
 # start the auth server
 CMD [".env/bin/uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80"]

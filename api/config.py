@@ -8,9 +8,9 @@ class Settings(BaseSettings):
 
     app_name: str = "Auth Server"
     access_token_secret: str | None = None
-    access_token_expiry: int = 15  # 15mins
+    access_token_expiry: int = 1 #15  # 15mins
     refresh_token_secret: str | None = None
-    refresh_token_expiry: int = 1440  # 24hrs
+    refresh_token_expiry: int = 5 #1440  # 24hrs
     pwd_context: CryptContext = CryptContext(schemes=["bcrypt"], deprecated="auto")
     database: str = "user.db"
 
