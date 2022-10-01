@@ -13,15 +13,23 @@ docker build -t auth_server:latest .
 Replace *<your-secret-a/b>* with a your secret strings
 #### Linux/Unix/MacOS etc.
 ```bash
-docker run -d -p 3000:80 \
+docker run --name auth_server \
+       -d \
+       -p 3000:80 \
        -e ACCESS_TOKEN_SECRET=<your-secret-a> \
-       -e REFRESH_TOKEN_SECRET=<your-secret-b> --restart always auth_server
+       -e REFRESH_TOKEN_SECRET=<your-secret-b> \
+       --restart always \
+       auth_server
 ```
 #### Windows
 ```cmd
-docker run -d -p 3000:80 ^
+docker run --name auth_server ^
+       -d ^
+       -p 3000:80 ^
        -e ACCESS_TOKEN_SECRET=<your-secret-a> ^
-       -e REFRESH_TOKEN_SECRET=<your-secret-b> --restart always auth_server
+       -e REFRESH_TOKEN_SECRET=<your-secret-b> ^
+       --restart always ^
+       auth_server
 ```
 ### Authorisation Flow
 #### Authorisation Endpoints
