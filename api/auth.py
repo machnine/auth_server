@@ -9,6 +9,7 @@ from api.config import settings
 from api.crud import get_user, update_user
 from api.db import Session, get_session
 from api.model import Token, TokenRefresh, User, UserIn, UserShow
+from api.exceptions import InvalidCredentialException
 
 oauth_scheme = OAuth2PasswordBearer(tokenUrl="admin_token")
 
@@ -25,14 +26,6 @@ def authenticate_user(user: UserIn, session: Session) -> User:
         return False
 
     return this_user
-
-
-# custom exception
-credential_exception = HTTPException(
-    status_code=status.HTTP_401_UNAUTHORIZED,
-    detail="Incorrect username or password",
-    headers={"WWW-Authenticate": "Bearer"},
-)
 
 
 # JWT token
@@ -66,19 +59,19 @@ def get_user_from_refresh_token(token: str, session: Session) -> UserShow:
         email = payload.get("sub")
         # if user email not encoded in jwt
         if email is None:
-            raise credential_exception
+            raise InvalidCredentialException
 
         # if user does not exist
         user = get_user(email=email, session=session)
         if not user:
-            raise credential_exception
+            raise InvalidCredentialException
 
         # if refresh tokens do not match
         if user.refresh_token != token:
-            raise credential_exception
+            raise InvalidCredentialException
 
     except JWTError:
-        raise credential_exception
+        raise InvalidCredentialException
 
     return email
 
@@ -94,7 +87,7 @@ async def admin_token(
     user_in = UserIn(email=form.username, password=form.password)
     user = authenticate_user(user_in, session=session)
     if not user:
-        raise credential_exception
+        raise InvalidCredentialException
 
     if not user.is_admin:
         raise HTTPException(
@@ -116,7 +109,7 @@ async def access_token(user: UserIn, session: Session = Depends(get_session)):
     """
     the_user = authenticate_user(user=user, session=session)
     if not the_user:
-        raise credential_exception
+        raise InvalidCredentialException
     access_token = create_access_token(the_user.email)  # access token expires in 15mins
     refresh_token = create_refresh_token(
         the_user.email

@@ -1,9 +1,10 @@
-from test import test_client, mock_settings
+from test import mock_settings, test_client
 from unittest import mock
 
-from api import app, auth
-from api.crud import get_user
+import pytest
+from api import app, auth, crud
 from api.db import get_session
+from api.exceptions import InvalidCredentialException
 from api.model import Token, UserIn
 from jose import jwt
 from jose.exceptions import ExpiredSignatureError, JWTError
@@ -44,39 +45,32 @@ def test_authenticate_user(db_session: Session):
 
 
 def test_create_jwt_token():
+    secret = mock_settings.access_token_secret
     # token with default 15 mins expiry time
-    token_15 = jwt_creator(new_email)
+    token_15 = auth.create_jwt_token(new_email, secret)
     assert token_15 is not None
     decoded_15 = jwt_decoder(token_15)
     assert decoded_15["sub"] == new_email
 
     # not decodable by wrong secret
-    try:
-        wrong_15 = jwt_decoder(token_15, "WRONG_SECRET")
-    except JWTError:
-        wrong_15 = None
-    assert wrong_15 is None
+    with pytest.raises(JWTError):
+        jwt_decoder(token_15, "WRONG_SECRET")
 
     # token with set expiry time
-    token_99 = jwt_creator(new_email, minutes=99)
+    token_99 = auth.create_jwt_token(new_email, secret, 99)
     assert token_99 is not None
     decoded_99 = jwt_decoder(token_99)
     assert decoded_99["sub"] == new_email
 
     # not decodable by wrong secret
-    try:
-        decoded_w99 = jwt_decoder(token_99, "WRONG_SECRET")
-    except JWTError:
-        decoded_w99 = None
-    assert decoded_w99 is None
+    with pytest.raises(JWTError):
+        jwt_decoder(token_99, "WRONG_SECRET")
 
     # expired token
-    token_exp = jwt_creator(new_email, minutes=-5)
+    token_exp = auth.create_jwt_token(new_email, secret, -5)
     assert token_exp is not None
-    try:
+    with pytest.raises(ExpiredSignatureError):
         jwt_decoder(token_exp)
-    except ExpiredSignatureError:
-        assert True
 
 
 @mock.patch("api.auth.settings", mock_settings)
@@ -98,22 +92,26 @@ def test_create_refresh_token():
 @mock.patch("api.auth.settings", mock_settings)
 def test_get_user_from_refresh_token(db_session: Session):
     # refresh token without email encoded
-    token_noemail = jwt_creator(email=None)
-    try:
-        user_noemail = auth.get_user_from_refresh_token(token_noemail, db_session)
-    except Exception:
-        user_noemail = None
-    assert user_noemail is None
+    noemail_token = jwt_creator(email=None)
+    with pytest.raises(InvalidCredentialException):
+        auth.get_user_from_refresh_token(noemail_token, db_session)
 
     # refresh token with non-existing user
-    token_nonuser = auth.create_refresh_token(email="random@email.com")
-    try:
-        non_user = auth.get_user_from_refresh_token(token_nonuser, db_session)
-    except Exception:
-        non_user = None
-    assert non_user is None
+    nonuser_token = auth.create_refresh_token(email="random@email.com")
+    with pytest.raises(InvalidCredentialException):
+        auth.get_user_from_refresh_token(nonuser_token, db_session)
 
     # a real user
+    user_token = auth.create_refresh_token(email=fake_user.email)
+    # no stored refresh_token (logged out)
+    with pytest.raises(InvalidCredentialException):
+        auth.get_user_from_refresh_token(user_token, db_session)
+
+    # logged in user has refresh_token
+    crud.update_user(fake_user.email, db_session, refresh_token=user_token)
+    # get user
+    user = auth.get_user_from_refresh_token(user_token, db_session)
+    assert user == fake_user.email
 
 
 @mock.patch("api.auth.settings", mock_settings)
@@ -173,7 +171,7 @@ def test_post_refresh(db_session: Session):
     test_client.post("/token/", json=fake_user.dict())
 
     # read the refresh token
-    user = get_user(fake_user.email, db_session)
+    user = crud.get_user(fake_user.email, db_session)
     # test the following endpoint wiht user.refresh_token
     response = test_client.post("/refresh/", json={"refresh_token": user.refresh_token})
     assert response.status_code == 200
