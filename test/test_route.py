@@ -42,7 +42,6 @@ def test_create_user(db_session: Session):
     data = response.json()
 
     assert response.status_code == 401
-    assert data["detail"] == "Not authenticated"
 
     # mock authentication
     app.dependency_overrides[oauth_scheme] = lambda: "mock_token"
@@ -67,7 +66,6 @@ def test_update_user(db_session: Session):
     response = test_client.put("/user/", json={"email": fake_user.email})
     data = response.json()
     assert response.status_code == 401
-    assert data["detail"] == "Not authenticated"
 
     # mock authentication
     app.dependency_overrides[oauth_scheme] = lambda: "mock_token"
@@ -95,9 +93,7 @@ def test_delete_user(db_session: Session):
     app.dependency_overrides[get_session] = lambda: db_session
     #  requires authentication
     response = test_client.delete("/user/", json={"email": new_email})
-    data = response.json()
     assert response.status_code == 401
-    assert data["detail"] == "Not authenticated"
 
     # mock authentication
     app.dependency_overrides[oauth_scheme] = lambda: "mock_token"

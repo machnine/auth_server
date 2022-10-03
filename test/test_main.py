@@ -7,4 +7,3 @@ def test_root():
     """
     response = test_client.get("/")
     assert response.status_code == 404
-    assert response.json() == {"detail": "Not Found"}

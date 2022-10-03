@@ -68,7 +68,7 @@ def get_user_from_refresh_token(token: str, session: Session) -> UserShow:
         if email is None:
             raise credential_exception
 
-        # if user does not exists
+        # if user does not exist
         user = get_user(email=email, session=session)
         if not user:
             raise credential_exception
