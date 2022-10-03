@@ -57,9 +57,6 @@ def get_user_from_refresh_token(token: str, session: Session) -> UserShow:
     try:
         payload = jwt.decode(token, settings.refresh_token_secret, algorithms=["HS256"])
         email = payload.get("sub")
-        # if user email not encoded in jwt
-        if email is None:
-            raise InvalidCredentialException
 
         # if user does not exist
         user = get_user(email=email, session=session)
