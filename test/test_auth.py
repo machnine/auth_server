@@ -9,17 +9,22 @@ from jose import jwt
 from jose.exceptions import ExpiredSignatureError, JWTError
 from sqlmodel import Session
 
-from .conftest import fake_admin, fake_user
+from .conftest import FakeUser
 
 new_email = "newnew@email.com"
 
 
-def jwt_decoder(jwt_token: str, secret: str = mock_settings.access_token_secret):
+def jwt_decoder(
+    jwt_token: str,
+    secret: str = mock_settings.access_token_secret,
+):
     return jwt.decode(jwt_token, secret, algorithms=["HS256"])
 
 
 def jwt_creator(
-    email: str, secret: str = mock_settings.access_token_secret, minutes: int = 15
+    email: str,
+    secret: str = mock_settings.access_token_secret,
+    minutes: int = 15,
 ):
     return auth.create_jwt_token(email, secret, minutes)
 
@@ -33,14 +38,14 @@ def test_authenticate_user(db_session: Session):
 
     # failed wrong password
     failed_user = auth.authenticate_user(
-        UserIn(email=fake_user.email, password="anypass"), db_session
+        UserIn(email=FakeUser.user.email, password="anypass"), db_session
     )
     assert not failed_user
 
     # successful
-    success_user = auth.authenticate_user(fake_user, db_session)
+    success_user = auth.authenticate_user(FakeUser.user, db_session)
     assert success_user is not None
-    assert success_user.email == fake_user.email
+    assert success_user.email == FakeUser.user.email
 
 
 def test_create_jwt_token():
@@ -101,16 +106,16 @@ def test_get_user_from_refresh_token(db_session: Session):
         auth.get_user_from_refresh_token(nonuser_token, db_session)
 
     # a real user
-    user_token = auth.create_refresh_token(email=fake_user.email)
+    user_token = auth.create_refresh_token(email=FakeUser.user.email)
     # no stored refresh_token (logged out)
     with pytest.raises(InvalidCredentialException):
         auth.get_user_from_refresh_token(user_token, db_session)
 
     # logged in user has refresh_token
-    crud.update_user(fake_user.email, db_session, refresh_token=user_token)
+    crud.update_user(FakeUser.user.email, db_session, refresh_token=user_token)
     # get user
     user = auth.get_user_from_refresh_token(user_token, db_session)
-    assert user == fake_user.email
+    assert user == FakeUser.user.email
 
 
 @mock.patch("api.auth.settings", mock_settings)
@@ -118,7 +123,7 @@ def test_post_admin_token():
     # login as an admin user
     response = test_client.post(
         "/admin_token/",
-        data={"username": fake_admin.email, "password": fake_admin.password},
+        data={"username": FakeUser.admin.email, "password": FakeUser.admin.password},
     )
     assert response.status_code == 200
     new_access_token = Token(**response.json())
@@ -128,7 +133,7 @@ def test_post_admin_token():
     # attempt to login as a non-admin user
     response = test_client.post(
         "/admin_token/",
-        data={"username": fake_user.email, "password": fake_user.password},
+        data={"username": FakeUser.user.email, "password": FakeUser.user.password},
     )
     assert response.status_code == 403
 
@@ -143,7 +148,7 @@ def test_post_admin_token():
 @mock.patch("api.auth.settings", mock_settings)
 def test_post_token():
     # generate token for existing user
-    response = test_client.post("/token/", json=fake_user.dict())
+    response = test_client.post("/token/", json=FakeUser.user.dict())
     assert response.status_code == 200
     new_token = Token(**response.json())
     assert new_token.token_type == "bearer"
@@ -160,10 +165,10 @@ def test_post_token():
 @mock.patch("api.auth.settings", mock_settings)
 def test_post_refresh(db_session: Session):
     # generate a refresh token and stored in mock db
-    test_client.post("/token/", json=fake_user.dict())
+    test_client.post("/token/", json=FakeUser.user.dict())
 
     # read the refresh token
-    user = crud.get_user(fake_user.email, db_session)
+    user = crud.get_user(FakeUser.user.email, db_session)
     # test the following endpoint wiht user.refresh_token
     response = test_client.post("/refresh/", json={"refresh_token": user.refresh_token})
     assert response.status_code == 200
@@ -175,7 +180,7 @@ def test_post_refresh(db_session: Session):
     # because the running time of this code is "too short" when using the same timedelta
     # use a different timedelta to generate a token differs from the stored one
     with mock.patch("api.auth.settings.refresh_token_expiry", 10):
-        valid_refresh_token = auth.create_refresh_token(fake_user.email)
+        valid_refresh_token = auth.create_refresh_token(FakeUser.user.email)
     response = test_client.post(
         "/refresh/", json={"refresh_token": valid_refresh_token}
     )

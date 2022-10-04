@@ -1,13 +1,18 @@
+from dataclasses import dataclass
+from test import override_get_session, test_engine
+
 import pytest
 from api import crud
 from api.model import UserCreate
 from sqlmodel import SQLModel
-from test import override_get_session, test_engine
+
 
 # mock data
-fake_user = UserCreate(email="fake_user@email.com", password="fakepassword")
-fake_admin = UserCreate(email="fake_admin@email.com", password="fakeadminpass")
-fake_new_user = UserCreate(email="fake_new@example.com", password="fakenewuserpass")
+@dataclass
+class FakeUser:
+    user = UserCreate(email="fake_user@email.com", password="fakepassword")
+    admin = UserCreate(email="fake_admin@email.com", password="fakeadminpass")
+    new = UserCreate(email="fake_new@example.com", password="fakenewuserpass")
 
 
 # database session fixture
@@ -24,9 +29,9 @@ def pytest_sessionstart(session):
     SQLModel.metadata.create_all(test_engine)
 
     with next(override_get_session()) as db:
-        crud.create_user(fake_user, db)
-        crud.create_user(fake_admin, db)
-        crud.update_user(fake_admin.email, db, is_admin=1)
+        crud.create_user(FakeUser.user, db)
+        crud.create_user(FakeUser.admin, db)
+        crud.update_user(FakeUser.admin.email, db, is_admin=1)
         db.commit()
 
 

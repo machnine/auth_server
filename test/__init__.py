@@ -8,14 +8,14 @@ from sqlmodel.pool import StaticPool
 # mock API settings
 mock_settings = Settings(
     access_token_secret="aCcEsS_sEcRet",
-    refresh_token_secret="ReFrEsH_sEcRet"
+    refresh_token_secret="ReFrEsH_sEcRet",
 )
 
 # test database engine
 test_engine = create_engine(
     url="sqlite://",
     connect_args={"check_same_thread": False},
-    poolclass=StaticPool
+    poolclass=StaticPool,
 )
 
 
