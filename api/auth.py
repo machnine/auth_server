@@ -5,11 +5,11 @@ from fastapi.exceptions import HTTPException
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 
+from api import crud
 from api.config import settings
-from api.crud import get_user, update_user
 from api.db import Session, get_session
-from api.model import Token, TokenRefresh, User, UserIn, UserShow
 from api.exceptions import InvalidCredentialException
+from api.model import Token, TokenRefresh, User, UserIn, UserShow
 
 oauth_scheme = OAuth2PasswordBearer(tokenUrl="admin_token")
 
@@ -17,7 +17,7 @@ router = APIRouter(tags=["Token"])
 
 
 def authenticate_user(user: UserIn, session: Session) -> User:
-    this_user = get_user(email=user.email, session=session)
+    this_user = crud.get_user(email=user.email, session=session)
 
     if not this_user:
         return False
@@ -29,7 +29,11 @@ def authenticate_user(user: UserIn, session: Session) -> User:
 
 
 # JWT token
-def create_jwt_token(email: str, secret: str, expires_minutes: int | None = None):
+def create_jwt_token(
+    email: str,
+    secret: str,
+    expires_minutes: int | None = None,
+):
     payload = {"sub": email}
     if expires_minutes:
         expires = datetime.utcnow() + timedelta(minutes=expires_minutes)
@@ -59,7 +63,7 @@ def get_user_from_refresh_token(token: str, session: Session) -> UserShow:
         email = payload.get("sub")
 
         # if user does not exist
-        user = get_user(email=email, session=session)
+        user = crud.get_user(email=email, session=session)
         if not user:
             raise InvalidCredentialException
 
@@ -79,7 +83,8 @@ def get_user_from_refresh_token(token: str, session: Session) -> UserShow:
     summary="Allow admin to login via webform and obtain an access token for this server",
 )
 async def admin_token(
-    form: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(get_session)
+    form: OAuth2PasswordRequestForm = Depends(),
+    session: Session = Depends(get_session),
 ):
     user_in = UserIn(email=form.username, password=form.password)
     user = authenticate_user(user_in, session=session)
@@ -100,7 +105,10 @@ async def admin_token(
     response_model=Token,
     summary="Generate access_token and refresh_token for user",
 )
-async def access_token(user: UserIn, session: Session = Depends(get_session)):
+async def access_token(
+    user: UserIn,
+    session: Session = Depends(get_session),
+):
     """
     Accept user email and password (UserIn) and generate an access token
     """
@@ -113,7 +121,7 @@ async def access_token(user: UserIn, session: Session = Depends(get_session)):
     )  # refresh token expires in 24hrs
 
     # save refresh token to db
-    update_user(email=the_user.email, session=session, refresh_token=refresh_token)
+    crud.update_user(email=the_user.email, session=session, refresh_token=refresh_token)
 
     return {
         "access_token": access_token,
@@ -128,7 +136,8 @@ async def access_token(user: UserIn, session: Session = Depends(get_session)):
     summary="Renew access_token using a valid refresh_token",
 )
 async def renew_access_token(
-    token: TokenRefresh, session: Session = Depends(get_session)
+    token: TokenRefresh,
+    session: Session = Depends(get_session),
 ):
     """
     Accept a refresh token and generate an access token

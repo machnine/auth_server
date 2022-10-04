@@ -5,8 +5,8 @@ from fastapi.exceptions import HTTPException
 from pydantic import EmailStr
 from sqlalchemy.exc import IntegrityError
 
+from api import crud
 from api.auth import oauth_scheme
-from api.crud import create_user, delete_user, get_all_users, get_user, update_user
 from api.db import Session, get_session
 from api.model import UserCreate, UserShow
 
@@ -22,36 +22,55 @@ router = APIRouter(tags=["User"])
     summary="Create a new user",
 )
 async def user_create(
-    user: UserCreate, session: Session = Depends(get_session), _=Depends(oauth_scheme)
+    user: UserCreate,
+    session: Session = Depends(get_session),
+    _=Depends(oauth_scheme),
 ):
-    if the_user := get_user(email=user.email, session=session):
+    if the_user := crud.get_user(email=user.email, session=session):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"User <{the_user.email}> already exists!",
         )
 
-    new_user = create_user(user=user, session=session)
+    new_user = crud.create_user(user=user, session=session)
     return new_user
 
 
 # Retrieve
-@router.get("/users/", response_model=List[UserShow], summary="Retrieve all users")
-async def user_get_all(session: Session = Depends(get_session)):
-    users = get_all_users(session=session)
+@router.get(
+    "/users/",
+    response_model=List[UserShow],
+    summary="Retrieve all users",
+)
+async def user_get_all(
+    session: Session = Depends(get_session),
+):
+    users = crud.get_all_users(session=session)
     show_users = [UserShow.from_orm(user) for user in users]
     return show_users
 
 
-@router.get("/user/", response_model=UserShow, summary="Retrieve a user using email")
-async def user_get(email: EmailStr, session: Session = Depends(get_session)):
-    if user := get_user(email=email, session=session):
+@router.get(
+    "/user/",
+    response_model=UserShow,
+    summary="Retrieve a user using email",
+)
+async def user_get(
+    email: EmailStr,
+    session: Session = Depends(get_session),
+):
+    if user := crud.get_user(email=email, session=session):
         return UserShow.from_orm(user)
     else:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
 
 # Update
-@router.put("/user/", response_model=UserShow, summary="Update user attributes")
+@router.put(
+    "/user/",
+    response_model=UserShow,
+    summary="Update user attributes",
+)
 async def user_update(
     email: EmailStr,
     password: str | None = None,
@@ -59,10 +78,13 @@ async def user_update(
     session: Session = Depends(get_session),
     _=Depends(oauth_scheme),
 ):
-    if get_user(email=email, session=session):
+    if crud.get_user(email=email, session=session):
         try:
-            return update_user(
-                email=email, password=password, new_email=new_email, session=session
+            return crud.update_user(
+                email=email,
+                password=password,
+                new_email=new_email,
+                session=session,
             )
         except IntegrityError:
             raise HTTPException(
@@ -75,12 +97,16 @@ async def user_update(
 
 # Delete
 @router.delete(
-    "/user/", status_code=status.HTTP_204_NO_CONTENT, summary="Delete a user"
+    "/user/",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a user",
 )
 async def user_delete(
-    email: EmailStr, session: Session = Depends(get_session), _=Depends(oauth_scheme)
+    email: EmailStr,
+    session: Session = Depends(get_session),
+    _=Depends(oauth_scheme),
 ):
-    if get_user(email=email, session=session):
-        delete_user(email=email, session=session)
+    if crud.get_user(email=email, session=session):
+        crud.delete_user(email=email, session=session)
     else:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
