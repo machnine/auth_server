@@ -2,8 +2,7 @@ from test import mock_settings, test_client
 from unittest import mock
 
 import pytest
-from api import app, auth, crud
-from api.db import get_session
+from api import auth, crud
 from api.exceptions import InvalidCredentialException
 from api.model import Token, UserIn
 from jose import jwt
@@ -22,7 +21,7 @@ def jwt_decoder(jwt_token: str, secret: str = mock_settings.access_token_secret)
 def jwt_creator(
     email: str, secret: str = mock_settings.access_token_secret, minutes: int = 15
 ):
-    return auth.create_jwt_token(email=email, secret=secret, expires_minutes=minutes)
+    return auth.create_jwt_token(email, secret, minutes)
 
 
 def test_authenticate_user(db_session: Session):
@@ -115,8 +114,7 @@ def test_get_user_from_refresh_token(db_session: Session):
 
 
 @mock.patch("api.auth.settings", mock_settings)
-def test_post_admin_token(db_session: Session):
-    app.dependency_overrides[get_session] = lambda: db_session
+def test_post_admin_token():
     # login as an admin user
     response = test_client.post(
         "/admin_token/",
@@ -140,13 +138,10 @@ def test_post_admin_token(db_session: Session):
         data={"username": "random@email.com", "password": "pass"},
     )
     assert response.status_code == 401
-    app.dependency_overrides.clear()
 
 
 @mock.patch("api.auth.settings", mock_settings)
-def test_post_token(db_session: Session):
-    app.dependency_overrides[get_session] = lambda: db_session
-
+def test_post_token():
     # generate token for existing user
     response = test_client.post("/token/", json=fake_user.dict())
     assert response.status_code == 200
@@ -161,12 +156,9 @@ def test_post_token(db_session: Session):
     )
     assert response.status_code == 401
 
-    app.dependency_overrides.clear()
-
 
 @mock.patch("api.auth.settings", mock_settings)
 def test_post_refresh(db_session: Session):
-    app.dependency_overrides[get_session] = lambda: db_session
     # generate a refresh token and stored in mock db
     test_client.post("/token/", json=fake_user.dict())
 
@@ -188,4 +180,3 @@ def test_post_refresh(db_session: Session):
         "/refresh/", json={"refresh_token": valid_refresh_token}
     )
     assert response.status_code == 401
-    app.dependency_overrides.clear()
