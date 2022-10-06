@@ -21,13 +21,7 @@ def db_session():
     return next(override_get_session())
 
 
-def pytest_sessionstart(session):
-    """
-    Called after the test Session object has been created and
-    before performing collection and entering the run test loop.
-    """
-    SQLModel.metadata.create_all(test_engine)
-
+def inject_fake_users():
     with next(override_get_session()) as db:
         crud.create_user(FakeUser.user, db)
         crud.create_user(FakeUser.admin, db)
@@ -35,25 +29,10 @@ def pytest_sessionstart(session):
         db.commit()
 
 
+def pytest_sessionstart(session):
+    SQLModel.metadata.create_all(test_engine)
+    inject_fake_users()
+
+
 def pytest_sessionfinish(session, exitstatus):
-    """
-    Called after whole test run finished, right before
-    returning the exit status to the system.
-    """
-    SQLModel.metadata.clear()
-
-
-def pytest_configure(config):
-    """
-    Allows plugins and conftest files to perform initial configuration.
-    This hook is called for every plugin and initial conftest
-    file after command line options have been parsed.
-    """
-    pass
-
-
-def pytest_unconfigure(config):
-    """
-    called before test process is exited.
-    """
-    pass
+    SQLModel.metadata.drop_all(test_engine)
