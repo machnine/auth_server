@@ -18,6 +18,8 @@ docker run --name auth_server \
        -p 3000:80 \
        -e ACCESS_TOKEN_SECRET=<your-secret-a> \
        -e REFRESH_TOKEN_SECRET=<your-secret-b> \
+       -e ACCESS_TOKEN_EXPIRY=<int minutes (default=15)> \
+       -e REFRESH_TOKEN_EXPIRY=<int minutes (default=180)> \
        --restart always \
        auth_server
 ```
@@ -28,6 +30,8 @@ docker run --name auth_server ^
        -p 3000:80 ^
        -e ACCESS_TOKEN_SECRET=<your-secret-a> ^
        -e REFRESH_TOKEN_SECRET=<your-secret-b> ^
+       -e ACCESS_TOKEN_EXPIRY=<int minutes (default=15)> ^
+       -e REFRESH_TOKEN_EXPIRY=<int minutes (default=180)> ^
        --restart always ^
        auth_server
 ```
