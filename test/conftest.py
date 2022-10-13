@@ -1,10 +1,10 @@
 from dataclasses import dataclass
-from test import override_get_session, test_engine
+from test import test_engine
 
 import pytest
 from api import crud
 from api.model import UserCreate
-from sqlmodel import SQLModel
+from sqlmodel import Session, SQLModel
 
 
 # mock data
@@ -16,23 +16,21 @@ class FakeUser:
 
 
 # database session fixture
-@pytest.fixture
+@pytest.fixture()
 def db_session():
-    return next(override_get_session())
-
-
-def inject_fake_users():
-    with next(override_get_session()) as db:
-        crud.create_user(FakeUser.user, db)
-        crud.create_user(FakeUser.admin, db)
-        crud.update_user(FakeUser.admin.email, db, is_admin=1)
-        db.commit()
-
-
-def pytest_sessionstart(session):
+    # create all tables
     SQLModel.metadata.create_all(test_engine)
-    inject_fake_users()
+    # inject a couple of test users
+    with Session(test_engine) as session:
+        crud.create_user(FakeUser.user, session)
+        crud.create_user(FakeUser.admin, session)
+        crud.update_user(FakeUser.admin.email, session, is_admin=1)
+        session.commit()
 
+        yield session
 
-def pytest_sessionfinish(session, exitstatus):
+    # clean up database
+    # close session
+    session.close()
+    # delete all tables
     SQLModel.metadata.drop_all(test_engine)

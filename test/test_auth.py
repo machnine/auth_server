@@ -119,7 +119,7 @@ def test_get_user_from_refresh_token(db_session: Session):
 
 
 @mock.patch("api.auth.settings", mock_settings)
-def test_post_admin_token():
+def test_post_admin_token(db_session):
     # login as an admin user
     response = test_client.post(
         "/admin_token/",
@@ -146,7 +146,7 @@ def test_post_admin_token():
 
 
 @mock.patch("api.auth.settings", mock_settings)
-def test_post_token():
+def test_post_token(db_session):
     # generate token for existing user
     response = test_client.post("/token/", json=FakeUser.user.dict())
     assert response.status_code == 200

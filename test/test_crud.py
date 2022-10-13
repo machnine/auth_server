@@ -45,7 +45,12 @@ def test_update_user(db_session: Session):
 
     user_notexist = crud.update_user("i@dont.exist", db_session)
     assert user_notexist is None
+
     # attempt to update causing conflict in email duplication
+    # inject a user first
+    new_user = crud.create_user(FakeUser.new, db_session)
+    assert new_user.email == FakeUser.new.email
+    # check excetion is raised
     with pytest.raises(IntegrityError):
         crud.update_user(
             FakeUser.new.email,

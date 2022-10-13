@@ -1,6 +1,7 @@
 import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
 
 from api.auth import router as auth_router
 from api.route import router as route_router
@@ -37,3 +38,17 @@ async def startup_event():
     handler = logging.FileHandler("logfile.log")
     handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
     logger.addHandler(handler)
+
+
+
+@app.get("/", response_class=HTMLResponse)
+async def index(request: Request):
+    return """
+        <!DOCTYPE html>
+        <html>
+            <body>
+                <h1>Authentication Server</h1>
+                <h6><a href="/docs">API Docs</a><h6>
+            </body>
+        </html>
+    """
